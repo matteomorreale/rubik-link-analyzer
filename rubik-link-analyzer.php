@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Matteo Morreale
  */
 
@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisco una costante per la versione corrente del plugin
-define('RUBIK_LINK_ANALYZER_VERSION', '1.0.0');
+define('RUBIK_LINK_ANALYZER_VERSION', '1.0.1');
 
 class Rubik_Link_Analyzer {
     private static $instance = null;
@@ -126,7 +126,7 @@ class Rubik_Link_Analyzer {
                             'link_type' => $link_type,
                             'link_status' => $link_status,
                             'anchor_text' => $anchor_text,
-                            'date_discovered' => current_time('mysql')
+                            'date_discovered' => $date_discovered = date('Y-m-d H:i:s')
                         ),
                         array('%d', '%s', '%s', '%s', '%s')
                     );
