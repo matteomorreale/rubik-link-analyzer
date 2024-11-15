@@ -1,5 +1,5 @@
 <?php
-global $wpdb; // Aggiunto per risolvere l'errore di variabile non definita
+global $wpdb;
 
 // Definizione della tabella
 $table_name = $wpdb->prefix . 'rubik_link_data';
@@ -9,11 +9,12 @@ echo '<div class="wrap">';
 echo '<h1>Risultati della Scansione</h1>';
 
 // Visualizzazione degli ultimi 10 link inseriti
+// Modifica la parte di codice per la visualizzazione dei risultati, aggiungendo la colonna "Rel Attributes"
 echo '<h3>Ultimi 10 link inseriti:</h3>';
 $recent_results = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY date_discovered DESC LIMIT 10");
 if ($recent_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
-    echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Tipo di Link</th><th>Data Scoperta</th></tr></thead><tbody>';
+    echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Tipo di Link</th><th>Rel Attributes</th><th>Data Scoperta</th></tr></thead><tbody>';
     foreach ($recent_results as $row) {
         echo '<tr>';
         echo '<td>' . esc_html($row->id) . '</td>';
@@ -22,6 +23,7 @@ if ($recent_results) {
         echo '<td>' . esc_html($row->anchor_text) . '</td>';
         echo '<td>' . esc_html($row->link_status) . '</td>';
         echo '<td>' . esc_html($row->link_type) . '</td>';
+        echo '<td>' . esc_html($row->rel_attributes) . '</td>';
         echo '<td>' . esc_html($row->date_discovered) . '</td>';
         echo '</tr>';
     }
@@ -29,6 +31,7 @@ if ($recent_results) {
 } else {
     echo '<p>Nessun link trovato.</p>';
 }
+
 echo '<hr>';
 
 // Form di filtraggio dei link
@@ -120,11 +123,11 @@ if (!empty($_GET['filter_date_preset'])) {
 
 if (!empty($_GET['filter_link_type']) && $_GET['filter_link_type'] !== 'all') {
     if ($_GET['filter_link_type'] === 'follow') {
-        $where .= " AND link_status NOT IN ('nofollow', 'sponsored')";
+        $where .= " AND rel_attributes NOT IN ('nofollow', 'sponsored')";
     } elseif ($_GET['filter_link_type'] === 'nofollow') {
-        $where .= " AND link_status = 'nofollow'";
+        $where .= " AND rel_attributes = 'nofollow'";
     } elseif ($_GET['filter_link_type'] === 'sponsored') {
-        $where .= " AND link_status = 'sponsored'";
+        $where .= " AND rel_attributes = 'sponsored'";
     } elseif ($_GET['filter_link_type'] === 'internal') {
         $where .= " AND link_type = 'internal'";
     } elseif ($_GET['filter_link_type'] === 'external') {
@@ -146,6 +149,7 @@ if ($filtered_results) {
         echo '<td>' . esc_html($row->anchor_text) . '</td>';
         echo '<td>' . esc_html($row->link_status) . '</td>';
         echo '<td>' . esc_html($row->link_type) . '</td>';
+        echo '<td>' . esc_html($row->rel_attributes) . '</td>';
         echo '<td>' . esc_html($row->date_discovered) . '</td>';
         echo '</tr>';
     }

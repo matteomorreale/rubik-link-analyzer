@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.1
+ * Version: 1.0.3
  * Author: Matteo Morreale
  */
 
@@ -37,8 +37,11 @@ class Rubik_Link_Analyzer {
         // Hook per verificare le tabelle all'inizializzazione
         add_action('plugins_loaded', array($this, 'check_database_table'));
 
+        // Check se il plugin è aggiornato
+        add_action('plugins_loaded', array($this, 'check_plugin_version'));
+
         // Hook all'attivazione del plugin per creare le tabelle e registrare il cronjob
-        register_activation_hook(__FILE__, array($this, 'plugin_activation'));
+        register_activation_hook(__FILE__, array($this, 'activate_plugin'));
         
         // Hook alla disattivazione per rimuovere il cronjob
         register_deactivation_hook(__FILE__, array($this, 'plugin_deactivation'));
@@ -50,20 +53,32 @@ class Rubik_Link_Analyzer {
         add_action('wp_ajax_rubik_fetch_post_ids', array($this, 'ajax_fetch_post_ids'));
         add_action('wp_ajax_rubik_scan_single_post', array($this, 'ajax_scan_single_post'));
         add_action('wp_ajax_rubik_search_links', array($this, 'ajax_search_links'));
-
+		add_action('wp_ajax_rubik_delete_all_data', array($this, 'ajax_delete_all_data'));
+		
         // Hook per l'aggiornamento del plugin
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_plugin_update'));
         add_filter('plugins_api', array($this, 'plugin_info'), 10, 3);
     }
 
-    // Funzione di attivazione del plugin
-    public function plugin_activation() {
-        // Crea la tabella al momento dell'attivazione
-        $this->create_database_table();
+    public function activate_plugin() {
+        $this->create_database_table(); // Crea la tabella se non esiste
+        $this->check_and_update_table(); // Controlla e aggiorna la tabella se necessario
+    
+        // Salva la versione attuale del plugin
+        update_option('rubik_link_analyzer_version', '1.1'); // Aggiorna la versione del plugin
 
         // Pianifica l'evento se non è già pianificato
         if (!wp_next_scheduled('rubik_daily_scan_event')) {
             wp_schedule_event(strtotime('04:00:00'), 'daily', 'rubik_daily_scan_event');
+        }
+    }
+    
+    public function check_plugin_version() {
+        $saved_version = get_option('rubik_link_analyzer_version');
+    
+        if ($saved_version !== '1.1') { // Se la versione salvata non è la più recente
+            $this->check_and_update_table(); // Controlla e aggiorna la tabella se necessario
+            update_option('rubik_link_analyzer_version', '1.1'); // Aggiorna la versione nel database
         }
     }
 
@@ -75,6 +90,20 @@ class Rubik_Link_Analyzer {
             wp_unschedule_event($timestamp, 'rubik_daily_scan_event');
         }
     }
+	
+	// Funzione AJAX per cancellare tutti i dati
+	public function ajax_delete_all_data() {
+		global $wpdb;
+
+		// Cancellazione di tutti i dati dalla tabella
+		$deleted = $wpdb->query("TRUNCATE TABLE {$this->table_name}");
+
+		if ($deleted === false) {
+			wp_send_json_error(array('message' => 'Errore durante la cancellazione dei dati.'));
+		} else {
+			wp_send_json_success(array('message' => 'Dati cancellati con successo.'));
+		}
+	}
 
     // Funzione per la scansione giornaliera degli articoli non scansionati
     public function daily_scan_unsaved_posts() {
@@ -117,6 +146,8 @@ class Rubik_Link_Analyzer {
                     $response = wp_remote_head($link);
                     $link_status = is_wp_error($response) ? 'error' : wp_remote_retrieve_response_code($response);
 
+                    $date_discovered = date('Y-m-d H:i:s');
+
                     // Inserisci il link nella tabella del database
                     $wpdb->insert(
                         $this->table_name,
@@ -126,7 +157,7 @@ class Rubik_Link_Analyzer {
                             'link_type' => $link_type,
                             'link_status' => $link_status,
                             'anchor_text' => $anchor_text,
-                            'date_discovered' => $date_discovered = date('Y-m-d H:i:s')
+                            'date_discovered' => $date_discovered
                         ),
                         array('%d', '%s', '%s', '%s', '%s')
                     );
@@ -139,6 +170,7 @@ class Rubik_Link_Analyzer {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
+
         $sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             post_id BIGINT(20) UNSIGNED NOT NULL,
@@ -146,7 +178,8 @@ class Rubik_Link_Analyzer {
             link_type VARCHAR(20) NOT NULL,
             link_status VARCHAR(20) NOT NULL,
             anchor_text VARCHAR(255) NOT NULL,
-            date_discovered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            rel_attributes VARCHAR(255) DEFAULT NULL,
+            date_discovered DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id)
         ) $charset_collate;";
 
@@ -297,6 +330,10 @@ class Rubik_Link_Analyzer {
                     $anchor_text = sanitize_text_field($match[2]);
                     $link_type = strpos($link, home_url()) !== false ? 'internal' : 'external';
 
+                    // Verifica gli attributi `rel` del link
+                    preg_match('/rel=["\']([^"\']*)["\']/', $match[0], $rel_match);
+                    $rel_attributes = isset($rel_match[1]) ? sanitize_text_field($rel_match[1]) : '';
+
                     // Verifica lo stato del link (ad esempio 200, 404, ecc.)
                     $response = wp_remote_head($link);
                     $link_status = is_wp_error($response) ? 'error' : wp_remote_retrieve_response_code($response);
@@ -309,16 +346,18 @@ class Rubik_Link_Analyzer {
                     ));
 
                     if ($existing_link) {
-                        // Se il link esiste già, aggiorna il record senza modificare la data di scoperta
+                        // Se il link esiste già, aggiorna il record
                         $wpdb->update(
                             $this->table_name,
                             array(
                                 'link_type' => $link_type,
                                 'link_status' => $link_status,
-                                'anchor_text' => $anchor_text
+                                'anchor_text' => $anchor_text,
+                                'rel_attributes' => $rel_attributes,
+                                'date_discovered' => current_time('mysql')
                             ),
                             array('id' => $existing_link->id),
-                            array('%s', '%s', '%s'),
+                            array('%s', '%s', '%s', '%s', '%s'),
                             array('%d')
                         );
                     } else {
@@ -331,9 +370,10 @@ class Rubik_Link_Analyzer {
                                 'link_type' => $link_type,
                                 'link_status' => $link_status,
                                 'anchor_text' => $anchor_text,
+                                'rel_attributes' => $rel_attributes,
                                 'date_discovered' => current_time('mysql')
                             ),
-                            array('%d', '%s', '%s', '%s', '%s')
+                            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
                         );
                     }
                 }
@@ -495,6 +535,30 @@ class Rubik_Link_Analyzer {
 
         return $res;
     }
+
+    // Verifica se va aggiornato il database
+    public function check_and_update_table() {
+        global $wpdb;
+    
+        // Verifica se la colonna `rel_attributes` esiste
+        $column_exists = $wpdb->get_results($wpdb->prepare(
+            "SHOW COLUMNS FROM {$this->table_name} LIKE %s",
+            'rel_attributes'
+        ));
+    
+        // Se la colonna non esiste, esegui la modifica della tabella
+        if (empty($column_exists)) {
+            $sql = "ALTER TABLE {$this->table_name} ADD `rel_attributes` VARCHAR(255) DEFAULT NULL;";
+            $wpdb->query($sql);
+    
+            // Verifica eventuali errori
+            if ($wpdb->last_error) {
+                $this->log_error('Errore nell\'aggiornamento della tabella per aggiungere `rel_attributes`: ' . $wpdb->last_error);
+            } else {
+                error_log('Tabella aggiornata correttamente: aggiunta colonna `rel_attributes`');
+            }
+        }
+    }    
 }
 
 Rubik_Link_Analyzer::get_instance();

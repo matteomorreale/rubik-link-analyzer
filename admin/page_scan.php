@@ -30,6 +30,7 @@ foreach ($post_types as $post_type) {
 }
 echo '<br/>';
 echo '<button type="button" class="button button-primary" id="start-scan">Avvia Scansione</button>';
+echo '<button type="button" class="button button-secondary" id="delete-data">CANCELLA DATI</button>';
 echo '</form>';
 echo '<div id="scan-status"></div>';
 echo '</div>';
@@ -103,6 +104,22 @@ jQuery(document).ready(function($) {
                 $("#scan-status").html("<p>Nessun articolo da scansionare.</p>");
             }
         });
+    });
+
+    $("#delete-data").click(function() {
+        if (confirm("ATTENZIONE: Stai per cancellare tutti i dati! Questa operazione cancellerà anche le date di prima scoperta dei link. Sei sicuro di voler procedere?")) {
+            $.post(ajaxurl, { action: "rubik_delete_all_data" }, function(response) {
+                if (response.success) {
+                    $("#scan-status").html("<p>Dati cancellati con successo.</p>");
+                } else {
+                    console.error("Errore durante la cancellazione dei dati:", response);
+                    $("#scan-status").html("<p>Errore durante la cancellazione dei dati.</p>");
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.error("Errore AJAX durante la cancellazione dei dati:", textStatus, errorThrown);
+                $("#scan-status").html("<p>Errore durante la cancellazione dei dati. Dettagli dell'errore: " + errorThrown + "</p>");
+            });
+        }
     });
 });
 </script>
