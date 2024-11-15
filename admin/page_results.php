@@ -140,7 +140,7 @@ echo '<h3>Risultati Filtrati:</h3>';
 $filtered_results = $wpdb->get_results("SELECT * FROM {$table_name} $where ORDER BY date_discovered DESC");
 if ($filtered_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
-    echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Tipo di Link</th><th>Data Scoperta</th></tr></thead><tbody>';
+    echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Tipo di Link</th><th>Rel Attributes</th><th>Data Scoperta</th></tr></thead><tbody>';
     foreach ($filtered_results as $row) {
         echo '<tr>';
         echo '<td>' . esc_html($row->id) . '</td>';
