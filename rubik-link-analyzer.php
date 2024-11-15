@@ -146,7 +146,7 @@ class Rubik_Link_Analyzer {
             link_type VARCHAR(20) NOT NULL,
             link_status VARCHAR(20) NOT NULL,
             anchor_text VARCHAR(255) NOT NULL,
-            date_discovered DATETIME DEFAULT CURRENT_TIMESTAMP,
+            date_discovered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id)
         ) $charset_collate;";
 
