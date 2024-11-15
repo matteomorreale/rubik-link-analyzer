@@ -12,6 +12,9 @@ if (!defined('ABSPATH')) {
 
 // Definisco una costante per la versione corrente del plugin
 define('RUBIK_LINK_ANALYZER_VERSION', '1.0.1');
+define('RUBIK_LINK_ANALYZER_PLUGIN_FILE', __FILE__);
+
+require_once("admin/updater.php");
 
 class Rubik_Link_Analyzer {
     private static $instance = null;
@@ -37,9 +40,6 @@ class Rubik_Link_Analyzer {
         // Hook per verificare le tabelle all'inizializzazione
         add_action('plugins_loaded', array($this, 'check_database_table'));
 
-        // Check se il plugin è aggiornato
-        add_action('plugins_loaded', array($this, 'check_plugin_version'));
-
         // Hook all'attivazione del plugin per creare le tabelle e registrare il cronjob
         register_activation_hook(__FILE__, array($this, 'activate_plugin'));
         
@@ -54,31 +54,15 @@ class Rubik_Link_Analyzer {
         add_action('wp_ajax_rubik_scan_single_post', array($this, 'ajax_scan_single_post'));
         add_action('wp_ajax_rubik_search_links', array($this, 'ajax_search_links'));
 		add_action('wp_ajax_rubik_delete_all_data', array($this, 'ajax_delete_all_data'));
-		
-        // Hook per l'aggiornamento del plugin
-        add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_plugin_update'));
-        add_filter('plugins_api', array($this, 'plugin_info'), 10, 3);
     }
 
     public function activate_plugin() {
         $this->create_database_table(); // Crea la tabella se non esiste
         $this->check_and_update_table(); // Controlla e aggiorna la tabella se necessario
-    
-        // Salva la versione attuale del plugin
-        update_option('rubik_link_analyzer_version', '1.1'); // Aggiorna la versione del plugin
 
         // Pianifica l'evento se non è già pianificato
         if (!wp_next_scheduled('rubik_daily_scan_event')) {
             wp_schedule_event(strtotime('04:00:00'), 'daily', 'rubik_daily_scan_event');
-        }
-    }
-    
-    public function check_plugin_version() {
-        $saved_version = get_option('rubik_link_analyzer_version');
-    
-        if ($saved_version !== '1.1') { // Se la versione salvata non è la più recente
-            $this->check_and_update_table(); // Controlla e aggiorna la tabella se necessario
-            update_option('rubik_link_analyzer_version', '1.1'); // Aggiorna la versione nel database
         }
     }
 
