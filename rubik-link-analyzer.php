@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.10
+ * Version: 1.0.14
  * Author: Matteo Morreale
  */
 
@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisco una costante per la versione corrente del plugin
-define('RUBIK_LINK_ANALYZER_VERSION', '1.0.10');
+define('RUBIK_LINK_ANALYZER_VERSION', '1.0.14');
 define('RUBIK_LINK_ANALYZER_PLUGIN_FILE', __FILE__);
 
 date_default_timezone_set('Europe/Rome'); // Imposta il fuso orario correttamente
@@ -271,8 +271,8 @@ class Rubik_Link_Analyzer {
 
         add_submenu_page(
             'rubik_link_analyzer',
-            'Risultati per URL',
-            'Risultati per URL',
+            'Risultati filtrati',
+            'Risultati filtrati per URL, ID, Dominio, Anchor text e tanto altro',
             'manage_options',
             'rubik_link_single_results',
             array($this, 'display_single_results_page')
@@ -494,8 +494,8 @@ class Rubik_Link_Analyzer {
         // Generazione del risultato HTML
         if ($results) {
             ob_start();
-            echo '<table class="wp-list-table widefat fixed striped">';
-            echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Data Scoperta</th></tr></thead><tbody>';
+            echo '<table class="wp-list-table widefat fixed striped" id="sortable-table">';
+            echo '<thead><tr><th data-sort="int">ID</th><th data-sort="int">Post ID</th><th data-sort="string">Link</th><th data-sort="string">Anchor Text</th><th data-sort="string">Link Status</th><th data-sort="date">Data Scoperta</th></tr></thead><tbody>';
             foreach ($results as $row) {
                 echo '<tr>';
                 echo '<td>' . esc_html($row->id) . '</td>';

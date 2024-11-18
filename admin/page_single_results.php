@@ -1,23 +1,31 @@
-<?php
-// Layout della pagina di ricerca per singolo URL
-echo '<div class="wrap">';
-echo '<h1>Risultati per Singolo URL</h1>';
-echo '<form id="rubik-single-search-form">';
-echo '<input type="text" id="search_query" name="search_query" placeholder="Inserisci Post ID, permalink, dominio, anchor text o status">';
-echo '<select id="search_type" name="search_type">
-        <option value="post_id">Post ID</option>
-        <option value="permalink">Permalink</option>
-        <option value="domain">Dominio</option>
-        <option value="anchor_text">Anchor Text</option>
-        <option value="status">Status di Pagina</option>
-      </select>';
-echo '<button type="button" class="button button-primary" id="search-url">Cerca</button>';
-echo '</form>';
-echo '<div id="single-search-results"></div>';
-echo '</div>';
+<!-- // Layout della pagina di ricerca per singolo URL -->
+<div class="wrap">
+    <h1>Risultati per Singolo URL</h1>
+    <form id="rubik-single-search-form">
+        <input type="text" id="search_query" name="search_query" placeholder="Inserisci Post ID, permalink, dominio, anchor text o status">
+        <select id="search_type" name="search_type">
+                <option value="post_id">Post ID</option>
+                <option value="permalink">Permalink</option>
+                <option value="domain">Dominio</option>
+                <option value="anchor_text">Anchor Text</option>
+                <option value="status">Status di Pagina</option>
+            </select>
+        <button type="button" class="button button-primary" id="search-url">Cerca</button>
+    </form>
+    <div id="single-search-results"></div>
+</div>
 
-// JavaScript per gestire la ricerca AJAX e aggiornare l'interfaccia utente
-?>
+<style>
+    #sortable-table th {
+        color: dodgerblue;
+        font-size: 15px;
+        font-weight: 500;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+</style>
+<!-- // JavaScript per gestire la ricerca AJAX e aggiornare l'interfaccia utente -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.2.1/tablesort.min.js"></script>
 <script type="text/javascript">
     var rubikTranslations = {
         statusWarning: "<?php echo esc_js(__('Stai cercando un numero che potrebbe corrispondere a uno status di pagina (es. 404, 301). Se è questo il caso, seleziona -Status di Pagina- nel menu a tendina.', 'rubik-plugin')); ?>"
@@ -81,6 +89,12 @@ echo '</div>';
             $.post(ajaxurl, searchData, function(response) {
                 if (response.success) {
                     $("#single-search-results").html(response.data.html);
+
+                    // Inizializza Tablesort dopo che la tabella è stata caricata
+                    const table = document.getElementById('sortable-table');
+                    if (table) {
+                        new Tablesort(table);
+                    }
                 } else {
                     $("#single-search-results").html("<p>Nessun risultato valido.</p>");
                 }

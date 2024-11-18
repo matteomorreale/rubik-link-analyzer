@@ -42,9 +42,9 @@
 - Vai alla pagina **Risultati** per visualizzare gli ultimi 10 link trovati e applicare filtri per un'analisi più approfondita.
 - Puoi filtrare i link per data, tipo di link (follow, nofollow, sponsored), e altro.
 
-### Ricerca per Singolo URL o ID
-- Utilizza la pagina **Risultati per singolo URL** per cercare un link specifico tramite URL, ID o titolo del post.
-- Puoi aggiornare i dati di scansione di un post eseguendo una scansione dedicata tramite la ricerca.
+### Ricerca per Dominio, Title, Anchor, Permalink, HTTP Status o PostID
+- Utilizza la pagina **Risultati per singolo URL** per cercare un link specifico tramite Permalink, ID, titolo del post, Dominio di destinazione, Anchor text o HTTP status.
+- Puoi aggiornare i dati di scansione di un singolo post eseguendo una scansione dedicata tramite la ricerca.
 
 ## Aggiornamenti del Plugin
 
@@ -55,7 +55,7 @@ Il plugin è dotato di un sistema di aggiornamento automatico che consente di:
 ## Cronjob per la Scansione Programmata
 
 Per automatizzare la scansione dei nuovi articoli ogni giorno:
-- Viene impostato un cronjob che ogni mattina alle 4:00 scansiona i nuovi articoli non presenti nel database.
+- Viene impostato un cronjob che ogni mattina alle 4:00 scansiona i nuovi articoli non presenti nel database (CPT: post e page)
 
 ## Contribuire
 

@@ -177,7 +177,7 @@ if ($anchor_results) {
 
 // Visualizzazione dei domini più linkati
 echo '<h3>Domini più linkati:</h3>';
-$domain_results = $wpdb->get_results("SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(link, '/', 3), '/', -1) as domain, COUNT(*) as count FROM {$table_name} $where AND link_type = 'external' GROUP BY domain ORDER BY count DESC LIMIT 500");
+$domain_results = $wpdb->get_results("SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(link, '/', 3), '/', -1) as domain, COUNT(*) as count FROM {$table_name} $where AND link_type = 'external' GROUP BY domain ORDER BY count DESC");
 if ($domain_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
     echo '<thead><tr><th>Dominio</th><th>Occorrenze</th></tr></thead><tbody>';
