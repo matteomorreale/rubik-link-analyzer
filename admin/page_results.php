@@ -40,7 +40,7 @@ echo '<input type="hidden" name="page" value="rubik_link_results">';
 
 echo '<h3>Filtra i link:</h3>';
 // Selettore del periodo
-echo '<label for="filter_date_preset">Periodo:</label>';
+echo '<label for="filter_date_preset">Periodo di scoperta link:</label>';
 echo '<select id="filter_date_preset" name="filter_date_preset">';
 echo '<option value="last_week"' . (($_GET['filter_date_preset'] ?? '') == 'last_week' ? ' selected' : '') . '>Ultima settimana</option>';
 echo '<option value="last_30_days"' . (($_GET['filter_date_preset'] ?? 'last_30_days') == 'last_30_days' ? ' selected' : '') . '>Ultimi 30 giorni</option>';
@@ -136,8 +136,8 @@ if (!empty($_GET['filter_link_type']) && $_GET['filter_link_type'] !== 'all') {
 }
 
 // Visualizzazione dei risultati filtrati
-echo '<h3>Risultati Filtrati:</h3>';
-$filtered_results = $wpdb->get_results("SELECT * FROM {$table_name} $where ORDER BY date_discovered DESC");
+echo '<h3>Risultati Filtrati (max 1000):</h3>';
+$filtered_results = $wpdb->get_results("SELECT * FROM {$table_name} $where ORDER BY date_discovered DESC LIMIT 1000");
 if ($filtered_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
     echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Tipo di Link</th><th>Rel Attributes</th><th>Data Scoperta</th></tr></thead><tbody>';
@@ -160,7 +160,7 @@ if ($filtered_results) {
 
 // Visualizzazione delle anchor più usate
 echo '<h3>Anchor più usate:</h3>';
-$anchor_results = $wpdb->get_results("SELECT anchor_text, COUNT(*) as count FROM {$table_name} $where GROUP BY anchor_text ORDER BY count DESC LIMIT 5");
+$anchor_results = $wpdb->get_results("SELECT anchor_text, COUNT(*) as count FROM {$table_name} $where GROUP BY anchor_text ORDER BY count DESC LIMIT 50");
 if ($anchor_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
     echo '<thead><tr><th>Anchor Text</th><th>Occorrenze</th></tr></thead><tbody>';
@@ -177,7 +177,7 @@ if ($anchor_results) {
 
 // Visualizzazione dei domini più linkati
 echo '<h3>Domini più linkati:</h3>';
-$domain_results = $wpdb->get_results("SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(link, '/', 3), '/', -1) as domain, COUNT(*) as count FROM {$table_name} $where AND link_type = 'external' GROUP BY domain ORDER BY count DESC LIMIT 5");
+$domain_results = $wpdb->get_results("SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(link, '/', 3), '/', -1) as domain, COUNT(*) as count FROM {$table_name} $where AND link_type = 'external' GROUP BY domain ORDER BY count DESC LIMIT 500");
 if ($domain_results) {
     echo '<table class="wp-list-table widefat fixed striped">';
     echo '<thead><tr><th>Dominio</th><th>Occorrenze</th></tr></thead><tbody>';

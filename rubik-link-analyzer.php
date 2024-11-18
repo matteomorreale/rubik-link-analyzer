@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.4
+ * Version: 1.0.10
  * Author: Matteo Morreale
  */
 
@@ -11,8 +11,10 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisco una costante per la versione corrente del plugin
-define('RUBIK_LINK_ANALYZER_VERSION', '1.0.4');
+define('RUBIK_LINK_ANALYZER_VERSION', '1.0.10');
 define('RUBIK_LINK_ANALYZER_PLUGIN_FILE', __FILE__);
+
+date_default_timezone_set('Europe/Rome'); // Imposta il fuso orario correttamente
 
 require_once("admin/updater.php");
 
@@ -115,39 +117,84 @@ class Rubik_Link_Analyzer {
 
         foreach ($post_ids as $post_id) {
             $post = get_post($post_id);
-
+        
             if ($post) {
                 $content = $post->post_content;
-
+        
                 // Trova tutti i link nel contenuto
-                preg_match_all('/<a\s+(?:[^>]*?\s+)?href=["\']([^"\']*)["\'].*?>(.*?)<\/a>/i', $content, $matches, PREG_SET_ORDER);
+                preg_match_all('/<a\s+(.*?)href=["\']([^"\']*)["\'].*?>(.*?)<\/a>/i', $content, $matches, PREG_SET_ORDER);
                 foreach ($matches as $match) {
-                    $link = esc_url_raw($match[1]);
-                    $anchor_text = sanitize_text_field($match[2]);
+                    $link_attributes = $match[1];
+                    $link = esc_url_raw($match[2]);
+                    $anchor_text = sanitize_text_field($match[3]);
                     $link_type = strpos($link, home_url()) !== false ? 'internal' : 'external';
-
+        
+                    // Estrai il valore dell'attributo rel (se presente)
+                    $rel_attribute = '';
+                    if (preg_match('/\srel=["\']([^"\']*)["\']/i', $link_attributes, $rel_match)) {
+                        $rel_attribute = sanitize_text_field($rel_match[1]);
+                    }
+        
+                    // Definisci lo status del link (follow, nofollow, sponsored, ecc.)
+                    if (strpos($rel_attribute, 'nofollow') !== false) {
+                        $link_status = 'nofollow';
+                    } elseif (strpos($rel_attribute, 'sponsored') !== false) {
+                        $link_status = 'sponsored';
+                    } elseif (strpos($rel_attribute, 'ugc') !== false) {
+                        $link_status = 'ugc';
+                    } else {
+                        $link_status = 'follow'; // Default quando non specificato
+                    }
+        
                     // Verifica lo stato del link (ad esempio 200, 404, ecc.)
                     $response = wp_remote_head($link);
-                    $link_status = is_wp_error($response) ? 'error' : wp_remote_retrieve_response_code($response);
-
+                    $http_status = is_wp_error($response) ? 'error' : wp_remote_retrieve_response_code($response);
+        
                     $date_discovered = date('Y-m-d H:i:s');
-
-                    // Inserisci il link nella tabella del database
-                    $wpdb->insert(
-                        $this->table_name,
-                        array(
-                            'post_id' => $post_id,
-                            'link' => $link,
-                            'link_type' => $link_type,
-                            'link_status' => $link_status,
-                            'anchor_text' => $anchor_text,
-                            'date_discovered' => $date_discovered
-                        ),
-                        array('%d', '%s', '%s', '%s', '%s')
-                    );
+        
+                    // Inserisci o aggiorna il link nella tabella del database
+                    $existing_link = $wpdb->get_row($wpdb->prepare(
+                        "SELECT * FROM {$this->table_name} WHERE post_id = %d AND link = %s",
+                        $post_id,
+                        $link
+                    ));
+        
+                    if ($existing_link) {
+                        // Aggiorna il record esistente
+                        $wpdb->update(
+                            $this->table_name,
+                            array(
+                                'link_type' => $link_type,
+                                'link_status' => $link_status,
+                                'anchor_text' => $anchor_text,
+                                'date_discovered' => $existing_link->date_discovered, // Manteniamo la data scoperta originale
+                                'http_status' => $http_status,
+                                'rel_attribute' => $rel_attribute
+                            ),
+                            array('id' => $existing_link->id),
+                            array('%s', '%s', '%s', '%s', '%s', '%s'),
+                            array('%d')
+                        );
+                    } else {
+                        // Inserisci un nuovo record
+                        $wpdb->insert(
+                            $this->table_name,
+                            array(
+                                'post_id' => $post_id,
+                                'link' => $link,
+                                'link_type' => $link_type,
+                                'link_status' => $link_status,
+                                'anchor_text' => $anchor_text,
+                                'date_discovered' => $date_discovered,
+                                'http_status' => $http_status,
+                                'rel_attribute' => $rel_attribute
+                            ),
+                            array('%d', '%s', '%s', '%s', '%s', '%s', '%s')
+                        );
+                    }
                 }
             }
-        }
+        }        
     }
 
     public function create_database_table() {
@@ -224,7 +271,7 @@ class Rubik_Link_Analyzer {
 
         add_submenu_page(
             'rubik_link_analyzer',
-            'Risultati per singolo URL',
+            'Risultati per URL',
             'Risultati per URL',
             'manage_options',
             'rubik_link_single_results',
@@ -384,63 +431,90 @@ class Rubik_Link_Analyzer {
         global $wpdb;
 
         $search_query = isset($_POST['search_query']) ? sanitize_text_field($_POST['search_query']) : '';
+        $search_type = isset($_POST['search_type']) ? sanitize_text_field($_POST['search_type']) : '';
         $table_name = $wpdb->prefix . 'rubik_link_data';
 
-        // Identifica il tipo di ricerca (ID, URL o titolo)
-        $post_id = is_numeric($search_query) ? intval($search_query) : null;
-        $post_url = filter_var($search_query, FILTER_VALIDATE_URL) ? $search_query : null;
-        $post_title = !$post_id && !$post_url ? $search_query : null;
-
-        $post_ids = array();
-
-        if ($post_id) {
-            $post_ids[] = $post_id;
-        } elseif ($post_url) {
-            $post = url_to_postid($post_url);
-            if ($post) {
-                $post_ids[] = $post;
-            }
-        } elseif ($post_title) {
-            $posts = get_posts(array(
-                's' => $post_title,
-                'post_type' => 'any',
-                'posts_per_page' => -1,
-            ));
-            foreach ($posts as $post) {
-                $post_ids[] = $post->ID;
+        // Funzione per determinare automaticamente il tipo di input se non specificato
+        if (!$search_type) {
+            if (filter_var($search_query, FILTER_VALIDATE_URL)) {
+                $search_type = 'permalink';
+            } elseif (preg_match('/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/', $search_query)) {
+                $search_type = 'domain';
+            } elseif (is_numeric($search_query)) {
+                $search_type = 'status';
+            } else {
+                $search_type = 'anchor_text';
             }
         }
 
+        $results = [];
+        $post_ids = [];
+
+        switch ($search_type) {
+            case 'post_id':
+                if (is_numeric($search_query)) {
+                    $post_ids[] = intval($search_query);
+                }
+                break;
+
+            case 'permalink':
+                $post_id = url_to_postid($search_query);
+                if ($post_id) {
+                    $post_ids[] = $post_id;
+                }
+                break;
+
+            case 'domain':
+                $query = "SELECT * FROM {$table_name} WHERE link LIKE %s";
+                $results = $wpdb->get_results($wpdb->prepare($query, '%' . $search_query . '%'));
+                break;
+
+            case 'anchor_text':
+                $query = "SELECT * FROM {$table_name} WHERE anchor_text LIKE %s";
+                $results = $wpdb->get_results($wpdb->prepare($query, '%' . $search_query . '%'));
+                break;
+
+            case 'status':
+                $query = "SELECT * FROM {$table_name} WHERE link_status = %s";
+                $results = $wpdb->get_results($wpdb->prepare($query, $search_query));
+                break;
+
+            default:
+                wp_send_json_error(['message' => 'Tipo di ricerca non valido.']);
+                return;
+        }
+
+        // Se sono stati trovati post_ids, esegui una query per questi ID
         if (!empty($post_ids)) {
             $placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
             $query = "SELECT * FROM {$table_name} WHERE post_id IN ($placeholders)";
             $results = $wpdb->get_results($wpdb->prepare($query, ...$post_ids));
+        }
 
-            if ($results) {
-                ob_start(); // Start buffering output
-                echo '<table class="wp-list-table widefat fixed striped">';
-                echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Data Scoperta</th></tr></thead><tbody>';
-                foreach ($results as $row) {
-                    echo '<tr>';
-                    echo '<td>' . esc_html($row->id) . '</td>';
-                    echo '<td>' . esc_html($row->post_id) . ' (<a href="' . get_edit_post_link($row->post_id) . '" target="_blank">Modifica</a> - <a href="' . get_permalink($row->post_id) . '" target="_blank">Visualizza</a>)</td>';
-                    echo '<td><a href="' . esc_url($row->link) . '" target="_blank">' . esc_html($row->link) . '</a></td>';
-                    echo '<td>' . esc_html($row->anchor_text) . '</td>';
-                    echo '<td>' . esc_html($row->link_status) . '</td>';
-                    echo '<td>' . esc_html($row->date_discovered) . '</td>';
-                    echo '</tr>';
-                }
-                echo '</tbody></table>';
-                $html = ob_get_clean(); // Get the buffered output
-
-                wp_send_json_success(array('html' => $html, 'post_id' => $post_ids[0]));
-            } else {
-                wp_send_json_error(array('message' => 'Nessun risultato trovato per la tua ricerca.'));
+        // Generazione del risultato HTML
+        if ($results) {
+            ob_start();
+            echo '<table class="wp-list-table widefat fixed striped">';
+            echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Anchor Text</th><th>Link Status</th><th>Data Scoperta</th></tr></thead><tbody>';
+            foreach ($results as $row) {
+                echo '<tr>';
+                echo '<td>' . esc_html($row->id) . '</td>';
+                echo '<td>' . esc_html($row->post_id) . ' (<a href="' . get_edit_post_link($row->post_id) . '" target="_blank">Modifica</a> - <a href="' . get_permalink($row->post_id) . '" target="_blank">Visualizza</a>)</td>';
+                echo '<td><a href="' . esc_url($row->link) . '" target="_blank">' . esc_html($row->link) . '</a></td>';
+                echo '<td>' . esc_html($row->anchor_text) . '</td>';
+                echo '<td>' . esc_html($row->link_status) . '</td>';
+                echo '<td>' . esc_html($row->date_discovered) . '</td>';
+                echo '</tr>';
             }
+            echo '</tbody></table>';
+            $html = ob_get_clean();
+
+            wp_send_json_success(['html' => $html, 'post_id' => $post_ids[0] ?? null]);
         } else {
-            wp_send_json_error(array('message' => 'Nessun risultato trovato per la tua ricerca.'));
+            wp_send_json_error(['message' => 'Nessun risultato trovato per la tua ricerca.']);
         }
     }
+
     // Funzione per verificare la presenza di aggiornamenti
     public function check_for_plugin_update($transient) {
         // Se l'oggetto non contiene aggiornamenti, ritorna subito
