@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.14
+ * Version: 1.0.15
  * Author: Matteo Morreale
  */
 
@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisco una costante per la versione corrente del plugin
-define('RUBIK_LINK_ANALYZER_VERSION', '1.0.14');
+define('RUBIK_LINK_ANALYZER_VERSION', '1.0.15');
 define('RUBIK_LINK_ANALYZER_PLUGIN_FILE', __FILE__);
 
 date_default_timezone_set('Europe/Rome'); // Imposta il fuso orario correttamente
@@ -294,50 +294,59 @@ class Rubik_Link_Analyzer {
     // Funzione AJAX per recuperare gli ID dei post da scansionare
     public function ajax_fetch_post_ids() {
         global $wpdb;
-
+    
         $scan_type = isset($_POST['scan_type']) ? sanitize_text_field($_POST['scan_type']) : 'all';
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
         $end_date = isset($_POST['end_date']) ? sanitize_text_field($_POST['end_date']) : '';
         $post_types = isset($_POST['post_types']) ? (array) $_POST['post_types'] : array('post', 'page');
-
-        // Definisci la query per gli articoli
-        $args = array(
-            'post_type' => $post_types,
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids'
-        );
-
-        // Seleziona gli articoli in base all'intervallo di date
-        if ($scan_type == 'date_range' && $start_date && $end_date) {
-            $args['date_query'] = array(
-                array(
-                    'after' => $start_date,
-                    'before' => $end_date,
-                    'inclusive' => true,
-                ),
-            );
-        }
-
-        // Esegui la query per ottenere tutti gli ID post pubblicati
-        $query = new WP_Query($args);
-        $all_post_ids = $query->posts;
-
-        // Se il tipo di scansione è per gli articoli non ancora scansionati
+    
         if ($scan_type == 'unsaved') {
-            // Recupera tutti gli ID post già scansionati dalla tabella personalizzata
-            $scanned_post_ids = $wpdb->get_col("SELECT DISTINCT post_id FROM {$this->table_name}");
-
-            // Filtra gli ID degli articoli non presenti nella lista degli articoli già scansionati
-            $post_ids = array_diff($all_post_ids, $scanned_post_ids);
+            // Ottieni direttamente dal database solo gli articoli non presenti nella tabella delle scansioni
+            $query = "
+                SELECT ID FROM {$wpdb->posts}
+                WHERE post_status = 'publish'
+                AND post_type IN ('" . implode("','", array_map('esc_sql', $post_types)) . "')
+                AND ID NOT IN (
+                    SELECT DISTINCT post_id FROM {$this->table_name}
+                )
+            ";
+    
+            if ($start_date && $end_date) {
+                $query .= $wpdb->prepare(" AND post_date BETWEEN %s AND %s", $start_date, $end_date);
+            }
+    
+            $post_ids = $wpdb->get_col($query);
+    
         } else {
-            // Altrimenti prendi tutti gli articoli
-            $post_ids = $all_post_ids;
+            // Recupera tutti gli articoli
+            $args = array(
+                'post_type' => $post_types,
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'fields' => 'ids'
+            );
+    
+            if ($scan_type == 'date_range' && $start_date && $end_date) {
+                $args['date_query'] = array(
+                    array(
+                        'after' => $start_date,
+                        'before' => $end_date,
+                        'inclusive' => true,
+                    ),
+                );
+            }
+    
+            $query = new WP_Query($args);
+            $post_ids = $query->posts;
         }
-
-        // Restituisci gli ID dei post tramite AJAX
-        wp_send_json_success(array('post_ids' => $post_ids));
-    }
+    
+        // Verifica se ci sono articoli da scansionare
+        if (!empty($post_ids)) {
+            wp_send_json_success(array('post_ids' => $post_ids));
+        } else {
+            wp_send_json_error(array('message' => 'Nessun articolo da scansionare.'));
+        }
+    }    
 
     // Funzione AJAX per la scansione di un singolo articolo
     public function ajax_scan_single_post() {

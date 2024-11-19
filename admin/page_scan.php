@@ -1,42 +1,42 @@
-<?php
-// Layout della pagina di scansione
+<!-- Layout della pagina di scansione -->
 
-echo '<div class="wrap">';
-echo '<h1>Scansione Link</h1>';
+<div class="wrap">
+<h1><?php _e("Scansione Link");?></h1>
 
-// Opzioni di scansione: tutto, non scansionati, intervallo di date
-echo '<form id="rubik-scan-form">';
-echo '<p>Seleziona il tipo di scansione:</p>';
-echo '<select id="scan_type" name="scan_type">';
-echo '<option value="all">Tutti gli articoli</option>';
-echo '<option value="unsaved">Articoli non presenti a database</option>';
-echo '<option value="date_range">Scansione per intervallo di date</option>';
-echo '</select>';
-echo '<div id="date-range-fields" style="display:none;">';
-echo '<label for="start_date">Data inizio:</label>';
-echo '<input type="date" id="start_date" name="start_date">';
-echo '<label for="end_date">Data fine:</label>';
-echo '<input type="date" id="end_date" name="end_date">';
-echo '</div>';
-echo '<p>Seleziona i custom post type da scansionare:</p>';
+<!-- Opzioni di scansione: tutto, non scansionati, intervallo di date -->
+<form id="rubik-scan-form">
+    <p><?php _e("Seleziona il tipo di scansione");?>:</p>
+    <select id="scan_type" name="scan_type">
+        <option value="all"><?php _e("Tutti gli articoli");?></option>
+        <option value="unsaved"><?php _e("Articoli non presenti a database");?></option>
+        <option value="date_range"><?php _e("Scansione per intervallo di date");?></option>
+    </select>
+    <div id="date-range-fields" style="display:none;">
+        <label for="start_date"><?php _e("Data inizio");?>:</label>
+        <input type="date" id="start_date" name="start_date">
+        <label for="end_date"><?php _e("Data fine");?>:</label>
+        <input type="date" id="end_date" name="end_date">
+    </div>
+    <p><?php _e("Seleziona i custom post type da scansionare");?>:</p>
 
-// Lista dei custom post type attivi con checkbox
-$post_types = get_post_types(array('public' => true), 'objects');
-foreach ($post_types as $post_type) {
-    if (!in_array($post_type->name, array('attachment'))) {
-        echo '<input type="checkbox" name="post_types[]" value="' . esc_attr($post_type->name) . '" id="' . esc_attr($post_type->name) . '">';
-        echo '<label for="' . esc_attr($post_type->name) . '">' . esc_html($post_type->label) . '</label><br>';
+    <?php
+    // Lista dei custom post type attivi con checkbox
+    $post_types = get_post_types(array('public' => true), 'objects');
+    foreach ($post_types as $post_type) {
+        if (!in_array($post_type->name, array('attachment'))) {
+            echo '<input type="checkbox" name="post_types[]" value="' . esc_attr($post_type->name) . '" id="' . esc_attr($post_type->name) . '">';
+            echo '<label for="' . esc_attr($post_type->name) . '">' . esc_html($post_type->label) . '</label><br>';
+        }
     }
-}
-echo '<br/>';
-echo '<button type="button" class="button button-primary" id="start-scan">Avvia Scansione</button>';
-echo '<button type="button" class="button button-secondary" id="delete-data">CANCELLA DATI</button>';
-echo '</form>';
-echo '<div id="scan-status"></div>';
-echo '</div>';
+    ?>
+    <br/>
+    <button type="button" class="button button-primary" id="start-scan"><?php _e("Avvia Scansione");?></button>
+    <button type="button" class="button button-secondary" id="delete-data"><?php _e("CANCELLA DATI");?></button>
+</form>
+<div id="scan-status"></div>
+</div>
 
-// JavaScript per gestire la scansione AJAX e aggiornare l'interfaccia utente
-?>
+<!-- JavaScript per gestire la scansione AJAX e aggiornare l'interfaccia utente -->
 <script type="text/javascript">
 jQuery(document).ready(function($) {
     $("#scan_type").change(function() {
