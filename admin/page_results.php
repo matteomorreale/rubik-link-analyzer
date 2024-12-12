@@ -192,4 +192,43 @@ if ($domain_results) {
     echo '<p>Nessun dominio trovato.</p>';
 }
 
+// Aggiunta della sezione per i link in uscita senza testo
+echo '<hr>';
+echo '<h3>Link in uscita senza testo (anchor vuoto):</h3>';
+
+$empty_anchor_links = $wpdb->get_results("
+    SELECT id, post_id, link, link_status, rel_attributes, date_discovered 
+    FROM {$table_name} 
+    WHERE anchor_text = '' 
+    AND link_type = 'external'
+    ORDER BY date_discovered DESC
+");
+
+if ($empty_anchor_links) {
+    echo '<table class="wp-list-table widefat fixed striped">';
+    echo '<thead><tr><th>ID</th><th>Post ID</th><th>Link</th><th>Link Status</th><th>Rel Attributes</th><th>Data di Scoperta</th><th>Azioni</th></tr></thead><tbody>';
+    foreach ($empty_anchor_links as $row) {
+        echo '<tr>';
+        echo '<td>' . esc_html($row->id) . '</td>';
+        echo '<td>' . esc_html($row->post_id) . ' (<a href="' . get_edit_post_link($row->post_id) . '" target="_blank">Modifica</a> - <a href="' . get_permalink($row->post_id) . '" target="_blank">Visualizza</a>)</td>';
+        echo '<td><a href="' . esc_url($row->link) . '" target="_blank">' . esc_html($row->link) . '</a></td>';
+        echo '<td>' . esc_html($row->link_status) . '</td>';
+        echo '<td>' . esc_html($row->rel_attributes) . '</td>';
+        echo '<td>' . esc_html($row->date_discovered) . '</td>';
+        echo '<td><a href="' . esc_url(add_query_arg(['delete_link' => $row->id], admin_url('admin.php?page=rubik_link_results'))) . '" class="button button-secondary">Rimuovi</a></td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table>';
+} else {
+    echo '<p>Nessun link in uscita con anchor vuoto trovato.</p>';
+}
+
+// Controllo azione di rimozione
+if (!empty($_GET['delete_link'])) {
+    $link_id = intval($_GET['delete_link']);
+    $wpdb->delete($table_name, ['id' => $link_id]);
+    echo '<p style="color: green;">Link ID ' . esc_html($link_id) . ' rimosso con successo.</p>';
+}
+
+
 echo '</div>';
