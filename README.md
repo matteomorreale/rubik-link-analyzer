@@ -1,75 +1,77 @@
 # Rubik Link Analyzer
 
-**Rubik Link Analyzer** è un plugin per WordPress progettato per analizzare i link presenti negli articoli del sito. Offre strumenti per scansionare, analizzare e visualizzare informazioni dettagliate sui link, come i link interni, esterni, follow, nofollow e sponsorizzati.
+**Rubik Link Analyzer** is a WordPress plugin designed to analyze links within site articles. It provides tools to scan, analyze, and display detailed information about links, including internal, external, follow, nofollow, and sponsored links.
 
-## Funzionalità Principali
+**Beware** this is still in alpha, some functionalities won't work!
 
-- **Scansione dei Link**: Permette di scansionare i link presenti negli articoli di WordPress, identificando i link interni, esterni, follow, nofollow e sponsorizzati.
-- **Gestione dei Risultati**: Visualizzazione dei risultati della scansione, inclusi i link trovati, il loro stato HTTP, il tipo di link, l'anchor text e altri dettagli rilevanti.
-- **Ricerca Avanzata**: Ricerca per singolo URL, titolo o ID del post, con possibilità di aggiornare i dati dei link tramite scansioni ad-hoc.
-- **Filtri Personalizzati**: Filtraggio dei link per data, tipo di link (follow, nofollow, sponsored), domini più linkati, anchor text più utilizzate, e altro.
-- **Scansione Programmata**: Possibilità di impostare un cronjob per scansionare automaticamente i nuovi articoli non ancora presenti nel database.
-- **Sistema di Aggiornamento del Plugin**: Controllo automatico degli aggiornamenti del plugin tramite JSON, con la possibilità di aggiornare direttamente dalla dashboard di WordPress.
+## Main Features
 
-## Requisiti
+- **Link Scanning**: Scans links within WordPress articles, identifying internal, external, follow, nofollow, and sponsored links.
+- **Result Management**: Displays scan results, including found links, their HTTP status, link type, anchor text, and other relevant details.
+- **Advanced Search**: Search by single URL, post title, or ID, with the ability to update link data through ad-hoc scans.
+- **Custom Filters**: Filter links by date, link type (follow, nofollow, sponsored), most linked domains, most used anchor texts, and more.
+- **Scheduled Scanning**: Set up a cronjob to automatically scan new articles not yet in the database.
+- **Plugin Update System**: Automatic plugin update checks via JSON, with the ability to update directly from the WordPress dashboard.
 
-- **WordPress**: Versione 5.0 o superiore.
-- **PHP**: Versione 7.4 o superiore.
+## Requirements
 
-## Installazione
+- **WordPress**: Version 5.0 or higher.
+- **PHP**: Version 7.4 or higher.
 
-1. Scaricare il file ZIP del plugin.
-2. Accedere alla dashboard di amministrazione di WordPress.
-3. Andare in **Plugin > Aggiungi Nuovo**.
-4. Caricare il file ZIP e cliccare su **Installa Ora**.
-5. Attivare il plugin dopo l'installazione.
+## Installation
 
-## Configurazione
+1. Download the plugin ZIP file.
+2. Access the WordPress admin dashboard.
+3. Navigate to **Plugins > Add New**.
+4. Upload the ZIP file and click **Install Now**.
+5. Activate the plugin after installation.
 
-- Dopo l'attivazione, il plugin aggiungerà un nuovo menu chiamato **Link Analyzer** nel pannello di amministrazione di WordPress.
-- Potrai accedere alle pagine di **Scansione**, **Risultati** e **Risultati per singolo URL** per gestire i link del tuo sito.
+## Configuration
 
-## Utilizzo
+- Once activated, the plugin adds a new menu called **Link Analyzer** to the WordPress admin panel.
+- You can access **Scan**, **Results**, and **Results for Single URL** pages to manage your site's links.
 
-### Scansione dei Link
-- Vai alla pagina **Scansione** per avviare la scansione degli articoli selezionando:
-  - Tutti gli articoli.
-  - Solo gli articoli non ancora scansionati.
-  - Articoli pubblicati in un determinato intervallo di date.
-- Seleziona i custom post type da includere nella scansione.
+## Usage
 
-### Visualizzazione dei Risultati
-- Vai alla pagina **Risultati** per visualizzare gli ultimi 10 link trovati e applicare filtri per un'analisi più approfondita.
-- Puoi filtrare i link per data, tipo di link (follow, nofollow, sponsored), e altro.
+### Link Scanning
+- Navigate to the **Scan** page to start scanning articles by selecting:
+  - All articles.
+  - Only articles not yet scanned.
+  - Articles published within a specific date range.
+- Select custom post types to include in the scan.
 
-### Ricerca per Dominio, Title, Anchor, Permalink, HTTP Status o PostID
-- Utilizza la pagina **Risultati per singolo URL** per cercare un link specifico tramite Permalink, ID, titolo del post, Dominio di destinazione, Anchor text o HTTP status.
-- Puoi aggiornare i dati di scansione di un singolo post eseguendo una scansione dedicata tramite la ricerca.
+### Viewing Results
+- Go to the **Results** page to view the last 10 links found and apply filters for deeper analysis.
+- Filter links by date, link type (follow, nofollow, sponsored), and more.
 
-## Aggiornamenti del Plugin
+### Search by Domain, Title, Anchor, Permalink, HTTP Status, or Post ID
+- Use the **Results for Single URL** page to search for a specific link by Permalink, ID, post title, destination domain, anchor text, or HTTP status.
+- Update the scan data for a single post by running a dedicated scan through the search.
 
-Il plugin è dotato di un sistema di aggiornamento automatico che consente di:
-- Verificare periodicamente la disponibilità di nuove versioni tramite un file JSON ospitato su un server remoto.
-- Scaricare ed installare l'ultima versione disponibile direttamente dalla dashboard di WordPress.
+## Plugin Updates
 
-## Cronjob per la Scansione Programmata
+The plugin includes an automatic update system that allows you to:
+- Periodically check for new versions via a JSON file hosted on a remote server.
+- Download and install the latest available version directly from the WordPress dashboard.
 
-Per automatizzare la scansione dei nuovi articoli ogni giorno:
-- Viene impostato un cronjob che ogni mattina alle 4:00 scansiona i nuovi articoli non presenti nel database (CPT: post e page)
+## Cronjob for Scheduled Scanning
 
-## Contribuire
+To automate scanning of new articles daily:
+- A cronjob is set up to scan new articles not yet in the database every morning at 4:00 AM (CPT: post and page).
 
-- **Segnalazione Bug**: Per segnalare bug o problemi, apri una issue su GitHub.
-- **Pull Request**: Le PR sono benvenute! Se desideri migliorare il plugin, proponi pure le tue modifiche.
+## Contributing
 
-## Licenza
+- **Bug Reporting**: To report bugs or issues, open an issue on GitHub.
+- **Pull Requests**: PRs are welcome! If you want to improve the plugin, feel free to propose your changes.
 
-Questo progetto è distribuito sotto la licenza **GPLv2 o successiva**. Sentiti libero di utilizzarlo e modificarlo secondo i termini della licenza.
+## License
 
-## Autore
+This project is licensed under the **GPLv2 or later**. Feel free to use and modify it under the terms of the license.
 
-**Matteo Morreale** - [Sito Web](https://matteomorreale.it)
+## Author
 
-## Contatti
+**Matteo Morreale** - [Website](https://matteomorreale.it)
 
-Per qualsiasi domanda o richiesta, puoi contattarmi direttamente su [matteomorreale.it](https://matteomorreale.it).
+## Contact
+
+For any questions or requests, feel free to contact me directly via [matteomorreale.it](https://matteomorreale.it).
