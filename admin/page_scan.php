@@ -1,5 +1,15 @@
 <!-- Layout della pagina di scansione -->
-
+<style>
+    #scan-status {
+        border-radius: 5px;
+        background-color: white;
+        padding: 1em 3em;
+        max-width: 550px;
+        margin-top: 2em;
+        max-height: 400px;
+        overflow: scroll;
+    }
+</style>
 <div class="wrap">
 <h1><?php _e("Scansione Link");?></h1>
 
@@ -39,87 +49,105 @@
 <!-- JavaScript per gestire la scansione AJAX e aggiornare l'interfaccia utente -->
 <script type="text/javascript">
 jQuery(document).ready(function($) {
-    $("#scan_type").change(function() {
-        if ($(this).val() == "date_range") {
-            $("#date-range-fields").show();
+    jQuery("#scan_type").change(function() {
+        if (jQuery(this).val() == "date_range") {
+            jQuery("#date-range-fields").show();
         } else {
-            $("#date-range-fields").hide();
+            jQuery("#date-range-fields").hide();
         }
     });
 
     function fetchPostList(scanData, callback) {
-        $.post(ajaxurl, scanData, function(response) {
+        scanData._ = new Date().getTime();
+
+        jQuery.post(ajaxurl, scanData, function(response) {
             if (response.success) {
                 callback(response.data.post_ids);
             } else {
                 console.error("Errore durante la scansione iniziale:", response);
-                $("#scan-status").html("<p>Errore durante la scansione iniziale.</p>");
+                jQuery("#scan-status").html("<p>Errore durante la scansione iniziale.</p>");
             }
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.error("Errore AJAX durante la scansione iniziale:", textStatus, errorThrown);
-            $("#scan-status").html("<p>Errore durante la scansione iniziale. Dettagli dell'errore: " + errorThrown + "</p>");
+            jQuery("#scan-status").html("<p>Errore durante la scansione iniziale. Dettagli dell'errore: " + errorThrown + "</p>");
         });
     }
 
     function scanPost(postId, index, total) {
-        $.post(ajaxurl, {
+        jQuery.post(ajaxurl, {
             action: "rubik_scan_single_post",
             post_id: postId
         }, function(response) {
             if (response.success) {
-                $("#scan-status").append("<p>Articolo " + (index + 1) + " di " + total + " scansionato: " + response.data.message + "</p>");
+                updateScanStatus("Articolo " + (index + 1) + " di " + total + " scansionato: " + response.data.message);
             } else {
                 console.error("Errore durante la scansione del post ID " + postId + ":", response);
-                $("#scan-status").append("<p>Errore durante la scansione dell'articolo " + (index + 1) + ": " + postId + "</p>");
+                updateScanStatus("Errore durante la scansione dell'articolo " + (index + 1) + ": " + postId);
             }
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.error("Errore AJAX durante la scansione del post ID " + postId + ":", textStatus, errorThrown);
-            $("#scan-status").append("<p>Errore durante la scansione dell'articolo " + (index + 1) + " di " + total + ": Dettagli dell'errore: " + errorThrown + "</p>");
+            updateScanStatus("Errore durante la scansione dell'articolo " + (index + 1) + " di " + total + ": Dettagli dell'errore: " + errorThrown);
         });
     }
 
-    $("#start-scan").click(function() {
+    function resumeScan(postIds) {
+        if (!Array.isArray(postIds)) {
+            console.error("postIds non è un array:", postIds);
+            return;
+        }
+
+        var total = postIds.length;
+        postIds.forEach(function(postId, index) {
+            setTimeout(function() {
+                scanPost(postId, index, total);
+            }, index * 800); // Timeout per evitare il sovraccarico
+        });
+    }
+
+    jQuery("#start-scan").click(function() {
         var scanData = {
             action: "rubik_fetch_post_ids",
-            scan_type: $("#scan_type").val(),
-            start_date: $("#start_date").val(),
-            end_date: $("#end_date").val(),
-            post_types: $("input[name=\"post_types[]\"]:checked").map(function() {
-                return $(this).val();
+            scan_type: jQuery("#scan_type").val(),
+            start_date: jQuery("#start_date").val(),
+            end_date: jQuery("#end_date").val(),
+            post_types: jQuery("input[name=\"post_types[]\"]:checked").map(function() {
+                return jQuery(this).val();
             }).get()
         };
 
-        $("#scan-status").html("<p>Preparazione della scansione...</p>");
+        jQuery("#scan-status").html("<p>Preparazione della scansione...</p>");
         
         fetchPostList(scanData, function(postIds) {
-            $("#scan-status").html("<p>Inizio scansione articoli...</p>");
-            if (Array.isArray(postIds) && postIds.length > 0) {
-                postIds.forEach(function(postId, index) {
-                    setTimeout(function() {
-                        scanPost(postId, index, postIds.length);
-                    }, index * 1000); // Timeout per evitare il sovraccarico
-                });
-            }
-            else{
-                $("#scan-status").html("<p>Nessun articolo da scansionare.</p>");
-            }
+            let primoPost = postIds[0];
+            let ultimoPost = postIds[postIds.length - 1];
+            let numeroPost = postIds.length;
+            jQuery("#scan-status").html("<p>Inizio scansione di "+numeroPost+" articoli... da "+primoPost+" fino a "+ultimoPost+"</p>");
+            resumeScan(postIds);
         });
     });
 
-    $("#delete-data").click(function() {
+    jQuery("#delete-data").click(function() {
         if (confirm("ATTENZIONE: Stai per cancellare tutti i dati! Questa operazione cancellerà anche le date di prima scoperta dei link. Sei sicuro di voler procedere?")) {
-            $.post(ajaxurl, { action: "rubik_delete_all_data" }, function(response) {
+            jQuery.post(ajaxurl, { action: "rubik_delete_all_data" }, function(response) {
                 if (response.success) {
-                    $("#scan-status").html("<p>Dati cancellati con successo.</p>");
+                    updateScanStatus("Dati cancellati con successo.");
                 } else {
                     console.error("Errore durante la cancellazione dei dati:", response);
-                    $("#scan-status").html("<p>Errore durante la cancellazione dei dati.</p>");
+                    updateScanStatus("Errore durante la cancellazione dei dati.");
                 }
             }).fail(function(jqXHR, textStatus, errorThrown) {
                 console.error("Errore AJAX durante la cancellazione dei dati:", textStatus, errorThrown);
-                $("#scan-status").html("<p>Errore durante la cancellazione dei dati. Dettagli dell'errore: " + errorThrown + "</p>");
+                updateScanStatus("Errore durante la cancellazione dei dati. Dettagli dell'errore: " + errorThrown);
             });
         }
     });
 });
+function updateScanStatus(message) {
+    var $scanStatus = jQuery("#scan-status");
+    $scanStatus.prepend("<p>" + message + "</p>");
+    var $logEntries = $scanStatus.find("p");
+    if ($logEntries.length > 100) {
+        $logEntries.slice(100).remove();
+    }
+}
 </script>

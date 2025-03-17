@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rubik Link Analyzer
  * Description: Plugin per l'analisi dei link presenti negli articoli WordPress.
- * Version: 1.0.17
+ * Version: 1.0.24
  * Author: Matteo Morreale
  */
 
@@ -11,10 +11,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisco una costante per la versione corrente del plugin
-define('RUBIK_LINK_ANALYZER_VERSION', '1.0.17');
+define('RUBIK_LINK_ANALYZER_VERSION', '1.0.20');
 define('RUBIK_LINK_ANALYZER_PLUGIN_FILE', __FILE__);
-
-date_default_timezone_set('Europe/Rome'); // Imposta il fuso orario correttamente
 
 require_once("admin/updater.php");
 
@@ -300,49 +298,40 @@ class Rubik_Link_Analyzer {
         $end_date = isset($_POST['end_date']) ? sanitize_text_field($_POST['end_date']) : '';
         $post_types = isset($_POST['post_types']) ? (array) $_POST['post_types'] : array('post', 'page');
     
-        if ($scan_type == 'unsaved') {
-            // Ottieni direttamente dal database solo gli articoli non presenti nella tabella delle scansioni
-            $query = "
-                SELECT ID FROM {$wpdb->posts}
-                WHERE post_status = 'publish'
-                AND post_type IN ('" . implode("','", array_map('esc_sql', $post_types)) . "')
-                AND ID NOT IN (
-                    SELECT DISTINCT post_id FROM {$this->table_name}
-                )
-            ";
+        // Recupera tutti gli articoli
+        $args = array(
+            'post_type' => $post_types,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        );
     
-            if ($start_date && $end_date) {
-                $query .= $wpdb->prepare(" AND post_date BETWEEN %s AND %s", $start_date, $end_date);
-            }
-    
-            $post_ids = $wpdb->get_col($query);
-    
-        } else {
-            // Recupera tutti gli articoli
-            $args = array(
-                'post_type' => $post_types,
-                'post_status' => 'publish',
-                'posts_per_page' => -1,
-                'fields' => 'ids'
+        if ($scan_type == 'date_range' && $start_date && $end_date) {
+            $args['date_query'] = array(
+                array(
+                    'after' => $start_date,
+                    'before' => $end_date,
+                    'inclusive' => true,
+                ),
             );
-    
-            if ($scan_type == 'date_range' && $start_date && $end_date) {
-                $args['date_query'] = array(
-                    array(
-                        'after' => $start_date,
-                        'before' => $end_date,
-                        'inclusive' => true,
-                    ),
-                );
-            }
-    
-            $query = new WP_Query($args);
-            $post_ids = $query->posts;
         }
+    
+        $query = new WP_Query($args);
+        $all_post_ids = $query->posts;
+
+        // Array degli id di tutti i post
+        $post_ids = array();
+        $post_ids = array_values($all_post_ids);
+    
+        // Recupera tutti gli ID post già scansionati dalla tabella personalizzata
+        $scanned_post_ids = $wpdb->get_col("SELECT DISTINCT post_id FROM {$this->table_name}");
+
+        // Filtra gli ID degli articoli non presenti nella lista degli articoli già scansionati
+        $post_ids = array_diff($post_ids, $scanned_post_ids);
     
         // Verifica se ci sono articoli da scansionare
         if (!empty($post_ids)) {
-            wp_send_json_success(array('post_ids' => $post_ids));
+            wp_send_json_success(array('post_ids' => array_values($post_ids)));
         } else {
             wp_send_json_error(array('message' => 'Nessun articolo da scansionare.'));
         }
