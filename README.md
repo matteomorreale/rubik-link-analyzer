@@ -66,7 +66,7 @@ To automate scanning of new articles daily:
 
 ## License
 
-This project is licensed under the **GPLv2 or later**. Feel free to use and modify it under the terms of the license.
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**. Feel free to use and modify it under the terms of the license.
 
 ## Author
 
