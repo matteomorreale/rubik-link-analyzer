@@ -82,6 +82,10 @@ jQuery(document).ready(function($) {
 
     var scanCount = 0;
     var totalScanCount = 0;
+    var activeScans = 0;
+    var maxConcurrentScans = 5;
+    var scanQueue = [];
+    var isProcessing = false;
 
     function fetchPostList(scanData, callback) {
         scanData._ = new Date().getTime();
@@ -100,24 +104,58 @@ jQuery(document).ready(function($) {
     }
 
     function scanPost(postId, index, total) {
+        activeScans++;
+        updateScanCounter(scanCount, total, activeScans);
+        
         jQuery.post(ajaxurl, {
             action: "rubik_scan_single_post",
             post_id: postId
         }, function(response) {
+            activeScans--;
             scanCount++;
+            
             if (response.success) {
                 updateScanStatus("Articolo " + (index + 1) + " di " + total + " scansionato: " + response.data.message);
             } else {
                 console.error("Errore durante la scansione del post ID " + postId + ":", response);
                 updateScanStatus("Errore durante la scansione dell'articolo " + (index + 1) + ": " + postId);
             }
-            updateScanCounter(scanCount, total);
+            
+            updateScanCounter(scanCount, total, activeScans);
+            processQueue(); // Processa il prossimo elemento nella coda
         }).fail(function(jqXHR, textStatus, errorThrown) {
+            activeScans--;
             scanCount++;
+            
             console.error("Errore AJAX durante la scansione del post ID " + postId + ":", textStatus, errorThrown);
             updateScanStatus("Errore durante la scansione dell'articolo " + (index + 1) + " di " + total + ": Dettagli dell'errore: " + errorThrown);
-            updateScanCounter(scanCount, total);
+            
+            updateScanCounter(scanCount, total, activeScans);
+            processQueue(); // Processa il prossimo elemento nella coda
         });
+    }
+
+    function addToQueue(postId, index, total) {
+        scanQueue.push({
+            postId: postId,
+            index: index,
+            total: total
+        });
+        processQueue();
+    }
+
+    function processQueue() {
+        if (isProcessing) return;
+        
+        isProcessing = true;
+        
+        // Processa la coda finché ci sono elementi e abbiamo meno di maxConcurrentScans attivi
+        while (scanQueue.length > 0 && activeScans < maxConcurrentScans) {
+            var item = scanQueue.shift();
+            scanPost(item.postId, item.index, item.total);
+        }
+        
+        isProcessing = false;
     }
 
     function resumeScan(postIds) {
@@ -126,23 +164,25 @@ jQuery(document).ready(function($) {
             return;
         }
 
+        // Reset delle variabili di controllo
         scanCount = 0;
         totalScanCount = postIds.length;
+        activeScans = 0;
+        scanQueue = [];
         
         // Aggiungi il contatore in cima
         var $scanStatus = jQuery("#scan-status");
-        $scanStatus.html('<div class="scan-count">Scansionati: 0 / ' + totalScanCount + ' articoli</div>');
+        $scanStatus.html('<div class="scan-count">Scansionati: 0 / ' + totalScanCount + ' articoli (0 attivi)</div>');
         
+        // Aggiungi tutti gli articoli alla coda
         var total = postIds.length;
         postIds.forEach(function(postId, index) {
-            setTimeout(function() {
-                scanPost(postId, index, total);
-            }, index * 1200); // Timeout per evitare il sovraccarico
+            addToQueue(postId, index, total);
         });
     }
 
-    function updateScanCounter(current, total) {
-        jQuery(".scan-count").html('Scansionati: ' + current + ' / ' + total + ' articoli');
+    function updateScanCounter(current, total, active) {
+        jQuery(".scan-count").html('Scansionati: ' + current + ' / ' + total + ' articoli (' + active + ' attivi)');
     }
 
     jQuery("#start-scan").click(function() {
